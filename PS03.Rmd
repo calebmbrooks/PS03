@@ -16,6 +16,9 @@ knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4.5)
 
 # Load packages
 library(tidyverse)
+library(stats)
+library(ggplot2)
+library(broom)
 data1 <- read_csv("data/data1.csv")
 data2 <- read_csv("data/data2.csv")
 ```
@@ -35,10 +38,70 @@ For both `data1` and `data2` tibbles (a tibble is a data frame with some
 # Data 1
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+
+set.seed(123)
+
+smp_size <- floor(0.50 * nrow(data1)) #randomly splitting into training and test sets
+train_ind <- sample(seq_len(nrow(data1)), size = smp_size)
+d1h1 <- data1[train_ind, ]
+d1h2 <- data1[-train_ind, ]
+
+spline1 <- smooth.spline(d1h1$x, d1h1$y, df=185) #df chosen through trial and error, minimizing rmse
+d1h2 <- mutate(d1h2, y_hat = predict(spline1, d1h2$x)$y)
+rmse1 <- sqrt(sum((d1h1$y)^2-(d1h2$y_hat)^2))/nrow(d1h1)
+rmse1
+
+spline2 <- smooth.spline(d1h2$x, d1h2$y, df=185) 
+d1h1 <- mutate(d1h1, y_hat = predict(spline2, d1h1$x)$y)
+rmse2 <- sqrt(sum((d1h2$y)^2-(d1h1$y_hat)^2))/nrow(d1h1)
+rmse2
+
+total1 <- smooth.spline(data1$x, data1$y, df = 185)
+data1 <- mutate(data1, y_hat = predict(total1, data1$x)$y)
+rmsetot1 <- sqrt(sum((data1$y)^2-(data1$y_hat)^2))/nrow(data1)
+rmsetot1 #The rmse is an extimate for error term's theta parameter
+
+
+totalplot1 <- smooth.spline(data1$x, data1$y, df = 185) %>% 
+  broom::augment() %>% 
+  ggplot(aes(x=x)) +
+  geom_point(aes(y=y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1)
+totalplot1
+
 ```
 
 # Data 2
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+set.seed(111)
+smp_size <- floor(0.50 * nrow(data1))
+train_ind <- sample(seq_len(nrow(data1)), size = smp_size)
+
+d2h1 <- data2[train_ind, ]
+d2h2 <- data2[-train_ind, ]
+
+spline3 <- smooth.spline(d2h1$x, d2h1$y, df=50)
+d2h2 <- mutate(d2h2, y_hat = predict(spline1, d2h2$x)$y)
+rmse3 <- sqrt(sum((d2h1$y)^2-(d2h2$y_hat)^2))/nrow(d2h1)
+rmse3
+
+spline4 <- smooth.spline(d2h2$x, d2h2$y, df=160)
+d2h1 <- mutate(d2h1, y_hat = predict(spline4, d2h1$x)$y)
+rmse4 <- sqrt(sum((d2h2$y)^2-(d2h1$y_hat)^2))/nrow(d2h1)
+rmse4
+
+total2 <- smooth.spline(data2$x, data2$y, df = 105)
+data2 <- mutate(data2, y_hat = predict(total2, data2$x)$y)
+rmsetot2 <- sqrt(sum((data2$y)^2-(data2$y_hat)^2))
+rmsetot2/nrow(data2) 
+
+totalplot2 <- smooth.spline(data2$x, data2$y, df = 105) %>%  #mean df 
+  broom::augment() %>% 
+  ggplot(aes(x=x)) +
+  geom_point(aes(y=y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1)
+totalplot2
+
 ```
 
